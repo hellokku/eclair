@@ -5,15 +5,11 @@ module Eclair
     CACHE_DIR = "#{ENV['HOME']}/.ecl/.cache"
 
     def initialize opts
-      @config_file = opts[:config] || ENV["ECLRC"] || "#{ENV['HOME']}/.ecl/config.rb"
+      @config_file = opts[:config] || ENV["ECLRC"] || "#{ENV['HOME']}/.ecl/kconfig.rb"
       @aws_region = nil
       @columns = 4
-      @group_by = lambda do |instance|
-        if instance.security_groups.first
-          instance.security_groups.first.group_name
-        else
-          "no_group"
-        end
+      @group_by = lambda do |pod|
+        pod.namespace
       end
       @ssh_username = lambda do |image|
         case image.name
@@ -34,6 +30,8 @@ module Eclair
       @search_color         = [COLOR_BLACK, COLOR_YELLOW].freeze
       @help_color           = [COLOR_BLACK, COLOR_WHITE].freeze
       @dir_keys             = {}
+      @kubeconfig           = ""
+      @exclude_namespaces   = []
 
       instance_variables.each do |var|
         Config.class_eval do

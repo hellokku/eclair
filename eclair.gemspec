@@ -4,7 +4,7 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 require 'eclair/version'
 
 Gem::Specification.new do |spec|
-  spec.name          = "ecl"
+  spec.name          = "kecl"
   spec.version       = Eclair::VERSION
   spec.authors       = ["Devsisters"]
   spec.email         = ["se@devsisters.com"]

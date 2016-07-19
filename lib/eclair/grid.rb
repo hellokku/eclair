@@ -87,6 +87,10 @@ module Eclair
       @x = -1
       @y = -1
       group_map = {}
+      a = `kubectl --all-namespaces --kubeconfig=#{config.kubeconfig} get pods -o json`
+      parsed = JSON.parse(a)['items']
+      pods = parsed.map{|i| Pod.new(i)}.reject{ |x| config.exclude_namespaces.include? x.namespace }
+
       if config.group_by
         Aws.instances.group_by(&config.group_by).each do |group, instances|
           group_cell = nil
@@ -114,10 +118,10 @@ module Eclair
           group_cell.items.sort_by!(&sort_function)
         end
       else
-        col_limit = (Aws.instances.count - 1) / config.columns + 1
-        iter = Aws.instances.map{|i| Instance.new(i.instance_id)}.sort_by(&sort_function).each
+        col_limit = (parsed.length - 1) / config.columns + 1
+        iter = pods.each
         columns.each do |col|
-          col_limit.times do 
+          col_limit.times do
             begin
               i = iter.next
               i.column = col
@@ -142,7 +146,7 @@ module Eclair
     end
 
     def ssh
-      targets = selected.select{|i| i.is_a?(Instance) && i.connectable?}
+      targets = selected.select{|i| i.is_a?(Pod) && i.connectable?}
       return if targets.empty?
       close_screen
 
@@ -264,7 +268,7 @@ module Eclair
 
     def query
       return nil if @search_str == ""
-      result = columns.map(&:expand).flatten.grep(Instance).map(&:name).max_by{|name| name.score @search_str}
+      result = columns.map(&:expand).flatten.grep(Pod).map(&:name).max_by{|name| name.score @search_str}
       return nil if result.score(@search_str) == 0.0
       result
     end
@@ -331,7 +335,7 @@ module Eclair
 
         result = nil
         columns.each do |col|
-          target = col.find {|item| item.is_a?(Instance) && item.name == goto}
+          target = col.find {|item| item.is_a?(Pod) && item.name == goto}
           if target
             result = [target.x, target.y]
             break
