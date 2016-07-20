@@ -101,8 +101,6 @@ module Eclair
 
   
   def config
-
-
     @config
   end
 

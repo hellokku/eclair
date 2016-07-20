@@ -1,6 +1,7 @@
 module Eclair
   module Grid
     include CommonHelper
+    include BenchmarkHelper
     extend self
 
     SORT_FUNCTIONS = {
@@ -61,8 +62,9 @@ module Eclair
       stdscr.maxx/column_count
     end
 
-    def start platform
+    def start platform, cmd
       @platform = platform
+      @cmd = cmd
       assign
       move_cursor(x: 0, y: 0)
       render_all
@@ -191,7 +193,7 @@ module Eclair
       cmd = ""
       if targets.count == 1
         target = targets.first
-        cmd = target.ssh_cmd
+        cmd = target.ssh_cmd(@cmd)
       else
         cmds = []
         target_cmd = ""
@@ -200,16 +202,16 @@ module Eclair
           if i == 0 
             if ENV['TMUX'] # Eclair called inside of tmux
               # Create new session and save window id
-              window_name = `tmux new-window -P -- '#{target.ssh_cmd}'`.strip
+              window_name = `tmux new-window -P -- '#{target.ssh_cmd(@cmd)}'`.strip
               target_cmd = "-t #{window_name}"
             else # Eclair called from outside of tmux
               # Create new session and save session
               session_name = "eclair#{Time.now.to_i}"
               target_cmd = "-t #{session_name}"
-              `tmux new-session -d -s #{session_name} -- '#{target.ssh_cmd}'`
+              `tmux new-session -d -s #{session_name} -- '#{target.ssh_cmd(@cmd)}'`
             end
           else # Split layout and 
-            cmds << "split-window #{target_cmd} -- '#{target.ssh_cmd}'"
+            cmds << "split-window #{target_cmd} -- '#{target.ssh_cmd(@cmd)}'"
             cmds << "select-layout #{target_cmd} tiled"
           end
         end
@@ -400,8 +402,6 @@ module Eclair
 
     def debug
       trap("INT") { raise Interrupt }
-      close_screen
-      binding.pry      
       render_all
       trap("INT") { exit }
     end

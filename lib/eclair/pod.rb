@@ -98,8 +98,20 @@ module Eclair
       "$(cat #{cache_file} 2>/dev/null)"
     end
 
-    def ssh_cmd
-      "kubectl --kubeconfig=#{config.kubeconfig} --namespace=#{namespace} exec --tty -i #{name} /bin/bash"
+    def ssh_prefix
+      "kubectl --kubeconfig=#{config.kubeconfig} --namespace=#{namespace}"
+    end
+
+    def commands
+      {
+        "logs" => "logs --follow --tail=1000 #{name}",
+        "ssh" => "exec --tty -i #{name} /bin/bash",
+      }
+    end
+
+    def ssh_cmd cmd
+      cmd = "ssh" if !cmd || cmd.strip.length == 0
+      "#{ssh_prefix} #{commands[cmd]}"
     end
 
     def connectable?

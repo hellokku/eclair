@@ -14,7 +14,7 @@ module Eclair
       options
     end
 
-    def init platform
+    def init platform, cmd
       Eclair.init_config(parse_options)
       case platform
       when :aws
@@ -29,7 +29,7 @@ module Eclair
       crmode
       noecho
       curs_set(0)
-      Grid.start(platform)
+      Grid.start(platform, cmd)
       trap("INT") { exit }
       loaded = false
       cnt = 0

@@ -91,7 +91,7 @@ module Eclair
       "$(cat #{cache_file} 2>/dev/null)"
     end
 
-    def ssh_cmd
+    def ssh_cmd cmd = nil
       cmd = hosts.map do |host|
         config.ssh_ports.map do |port|
           cmd = "ssh #{config.ssh_options} -p#{port} #{key_cmd} #{username}@#{host}"

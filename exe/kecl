@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 require 'eclair'
 
-Eclair::Console.init(:k8s)
+Eclair::Console.init(:k8s, ARGV[0])
 # Eclair::Grid.assign
 # Eclair::Prompt.run!
