@@ -7,6 +7,7 @@ require "aws-sdk"
 require "string_scorer"
 require "pry"
 require "optionparser"
+require "time"
 
 require "eclair/helpers/benchmark_helper"
 require "eclair/helpers/common_helper"

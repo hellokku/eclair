@@ -62,7 +62,8 @@ module Eclair
       stdscr.maxx/column_count
     end
 
-    def start
+    def start platform
+      @platform = platform
       assign
       move_cursor(x: 0, y: 0)
       render_all
@@ -146,7 +147,7 @@ module Eclair
     end
 
     def ssh
-      targets = selected.select{|i| i.is_a?(Pod) && i.connectable?}
+      targets = selected.select{|i| i.is_a?(Cell) && i.connectable?}
       return if targets.empty?
       close_screen
 
@@ -268,7 +269,7 @@ module Eclair
 
     def query
       return nil if @search_str == ""
-      result = columns.map(&:expand).flatten.grep(Pod).map(&:name).max_by{|name| name.score @search_str}
+      result = columns.map(&:expand).flatten.grep(Cell).map(&:name).max_by{|name| name.score @search_str}
       return nil if result.score(@search_str) == 0.0
       result
     end
@@ -335,7 +336,7 @@ module Eclair
 
         result = nil
         columns.each do |col|
-          target = col.find {|item| item.is_a?(Pod) && item.name == goto}
+          target = col.find {|item| item.is_a?(Cell) && item.name == goto}
           if target
             result = [target.x, target.y]
             break

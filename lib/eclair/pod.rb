@@ -36,7 +36,6 @@ module Eclair
 
     def launch_time
       Time.parse @object['status']['startTime']
-
     end
 
     def state

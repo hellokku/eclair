@@ -14,9 +14,12 @@ module Eclair
       options
     end
 
-    def init
+    def init platform
       Eclair.init_config(parse_options)
-      Aws.fetch_all
+      case platform
+      when :aws
+        Aws.fetch_all
+      end
       ENV['ESCDELAY'] = "0"
       init_screen
       stdscr.timeout = 100
@@ -26,7 +29,7 @@ module Eclair
       crmode
       noecho
       curs_set(0)
-      Grid.start
+      Grid.start(platform)
       trap("INT") { exit }
       loaded = false
       cnt = 0
