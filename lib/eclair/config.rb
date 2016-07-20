@@ -5,11 +5,20 @@ module Eclair
     CACHE_DIR = "#{ENV['HOME']}/.ecl/.cache"
 
     def initialize opts
-      @config_file = opts[:config] || ENV["ECLRC"] || "#{ENV['HOME']}/.ecl/kconfig.rb"
+      @config_file = opts[:config] || ENV["ECLRC"] || "#{ENV['HOME']}/.ecl/config.rb"
       @aws_region = nil
       @columns = 4
-      @group_by = lambda do |pod|
+      
+      @k8s_group_by = lambda do |pod|
         pod.namespace
+      end
+      
+      @group_by = lambda do |instance|
+        if instance.security_groups.first
+          instance.security_groups.first.group_name
+        else
+          "no_group"
+        end
       end
       @ssh_username = lambda do |image|
         case image.name
@@ -74,6 +83,10 @@ module Eclair
         end
       end
       @ssh_keys.merge!(dir_keys)
+
+      if @aws_region
+        ::Aws.config.update(region: @aws_region)
+      end
     end
   end
 
@@ -83,13 +96,12 @@ module Eclair
     @config = Config.new(opts)
     load @config.config_file
     @config.after_load
+
   end
 
   
   def config
-    if @config.aws_region
-      ::Aws.config.update(region: @config.aws_region)
-    end
+
 
     @config
   end

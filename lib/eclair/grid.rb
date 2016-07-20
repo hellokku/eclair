@@ -24,7 +24,6 @@ module Eclair
         addstr(line)
       end
     end
-
     
     def render_header
       if mode == :search
@@ -88,25 +87,46 @@ module Eclair
       @x = -1
       @y = -1
       group_map = {}
-      a = `kubectl --all-namespaces --kubeconfig=#{config.kubeconfig} get pods -o json`
-      parsed = JSON.parse(a)['items']
-      pods = parsed.map{|i| Pod.new(i)}.reject{ |x| config.exclude_namespaces.include? x.namespace }
+      case @platform
+      when :aws
+        if config.group_by
+          Aws.instances.group_by(&config.group_by).each do |group, instances|
+            group_cell = nil
+            if group_map[group]
+              group_cell  = group_map[group]
+            else
+              col = columns[target_col]
+              group_cell = Group.new(group, col)
+              col << group_cell
+              group_map[group] = group_cell
+            end
+            instances.each do |i|
+              unless group_cell.find{|j| j.respond_to?(:instance_id) && j.instance_id == i.instance_id}
+                obj = Instance.new(i.instance_id, col)
+                group_cell << obj
+              end
+            end
+            group_cell.items.each do |x|
+              if x.object == nil
+                close_screen
+                binding.pry
+              end
+            end
 
-      if config.group_by
-        Aws.instances.group_by(&config.group_by).each do |group, instances|
-          group_cell = nil
-          if group_map[group]
-            group_cell  = group_map[group]
-          else
-            col = columns[target_col]
-            group_cell = Group.new(group, col)
-            col << group_cell
-            group_map[group] = group_cell
+            group_cell.items.sort_by!(&sort_function)
           end
-          instances.each do |i|
-            unless group_cell.find{|j| j.respond_to?(:instance_id) && j.instance_id == i.instance_id}
-              obj = Instance.new(i.instance_id, col)
-              group_cell << obj
+        else
+          col_limit = (Aws.instances.count - 1) / config.columns + 1
+          iter = Aws.instances.map{|i| Instance.new(i.instance_id)}.sort_by(&sort_function).each
+          columns.each do |col|
+            col_limit.times do 
+              begin
+                i = iter.next
+                i.column = col
+                col << i
+              rescue StopIteration
+                break
+              end
             end
           end
           group_cell.items.each do |x|
@@ -118,17 +138,34 @@ module Eclair
 
           group_cell.items.sort_by!(&sort_function)
         end
-      else
-        col_limit = (parsed.length - 1) / config.columns + 1
-        iter = pods.each
-        columns.each do |col|
-          col_limit.times do
-            begin
-              i = iter.next
+      when :k8s
+        k8s_cmd = `kubectl --all-namespaces --kubeconfig=#{config.kubeconfig} get pods -o json`
+        parsed = JSON.parse(k8s_cmd)['items']
+        pods = parsed.map{|i| Pod.new(i)}.reject{ |x| config.exclude_namespaces.include? x.namespace }
+
+        if config.k8s_group_by
+          pods.group_by(&config.k8s_group_by).each do |group, instances|
+            col = columns[target_col]
+            group_cell = Group.new(group, col)
+            col << group_cell
+
+            instances.each do |i|
               i.column = col
-              col << i
-            rescue StopIteration
-              break
+              group_cell << i
+            end
+          end
+        else
+          col_limit = (parsed.length - 1) / config.columns + 1
+          iter = pods.each
+          columns.each do |col|
+            col_limit.times do
+              begin
+                i = iter.next
+                i.column = col
+                col << i
+              rescue StopIteration
+                break
+              end
             end
           end
         end

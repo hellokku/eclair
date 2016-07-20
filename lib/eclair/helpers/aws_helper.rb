@@ -75,6 +75,7 @@ module Eclair
       Thread.abort_on_exception = true
       
       @threads = []
+
       
       if @instances
         pid = fork do
@@ -83,6 +84,7 @@ module Eclair
         Process.detach pid if pid
       else
         @new_instances = fetch_instances
+        binding.pry
         update_instances
       end
 
@@ -127,7 +129,7 @@ module Eclair
         resp.data.reservations.map(&:instances)
       }.flatten
 
-      Cache.update :instances, instances
+      Cache.update :instances, instances unless instances.empty?
       instances
     end
     
