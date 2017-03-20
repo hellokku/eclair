@@ -6,7 +6,10 @@ Eclair.configure do |config|
   # columns - Max number of columns displayed in eclair.
   config.columns = 4
 
-  # ssh_username - Function to find username from image
+  # ssh_username_from - If you want to get username via image or volume or instance. default image
+  # config.ssh_username_from = image
+
+  # ssh_username - Function to find username from image or volume or instance via config.ssh_username_from
   # You can use image data from EC2::Client#describe_images API call
   # https://docs.aws.amazon.com/AWSRubySDK/latest/AWS/EC2/Client.html#describe_images-instance_method
   config.ssh_username = lambda do |image|

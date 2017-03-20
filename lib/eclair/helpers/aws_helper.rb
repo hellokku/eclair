@@ -30,6 +30,15 @@ module Eclair
       !@images_thread.alive?
     end
 
+    def root_volume
+      @root_volume_thread.join
+      @root_volume || []
+    end
+
+    def root_volume?
+      !@root_volume_thread.alive?
+    end
+
     def dns_records **options
       if options.delete :force
         @route53_thread.join
@@ -59,6 +68,7 @@ module Eclair
         @instances = @r_instances
         @instance_map = @r_instances_map
         @images += @new_images
+        @root_volume += @new_root_volume
         @dns_records = @r_dns_records
         @security_groups = @r_security_groups
         Grid.assign
@@ -72,11 +82,21 @@ module Eclair
         @new_instances = r_instances.map(&:instance_id) - @instances.map(&:instance_id)
         if new_instances.empty?
           @new_images = []
+          @new_root_volume = []
         else
           image_ids = @new_instances.map(&:image_id)
+
+          root_volume_ids = @new_instances.collect{|i|
+            i.block_device_mappings.find{|v| v.device_name == i.root_device_name}.ebs.volume_id
+          }
+
           [
             Thread.new do
               @new_images = fetch_images(image_ids)
+            end,
+
+            Thread.new do
+              @new_root_volume = fetch_root_volume(root_volume_ids)
             end,
 
             Thread.new do
@@ -92,6 +112,10 @@ module Eclair
 
     def fetch_images image_ids
       ec2.describe_images(image_ids: image_ids).images.flatten
+    end
+
+    def fetch_root_volume root_volume_ids
+      ec2.describe_volumes(volume_ids: root_volume_ids).volumes.flatten
     end
 
     def fetch_dns_records
@@ -116,8 +140,8 @@ module Eclair
         resp.data.reservations.map(&:instances)
       }.flatten
 
-      instances.each do |i|
-        instance_map[i.instance_id] = i
+      instances.each do |i| 
+        instance_map[i.instance_id] = i 
       end
 
       [instances, instance_map]
@@ -129,6 +153,10 @@ module Eclair
 
       image_ids = @instances.map(&:image_id)
 
+      root_volume_ids = @instances.collect{|i|
+        i.block_device_mappings.find{|v| v.device_name == i.root_device_name}.ebs.volume_id
+      }
+
       if @threads
         @threads.each{ |t| t.kill }
       end
@@ -139,6 +167,10 @@ module Eclair
 
       @threads << @images_thread = Thread.new do
         @images = fetch_images(image_ids)
+      end
+
+      @threads << @root_volume_thread = Thread.new do
+        @root_volume = fetch_root_volume(root_volume_ids)
       end
 
       @threads << @route53_thread = Thread.new do

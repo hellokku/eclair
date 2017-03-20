@@ -52,6 +52,11 @@ module Eclair
       Aws.images(**options).find{|i| i.image_id == object.image_id}
     end
 
+    def volume
+      root_volume_id = object.block_device_mappings.find{|v| v.device_name == object.root_device_name}.ebs.volume_id
+      Aws.root_volume().find{|i| i.volume_id == root_volume_id}
+    end
+
     def security_groups **options
       if Aws.security_groups?
         object.security_groups.map{|instance_sg| 
@@ -77,7 +82,13 @@ module Eclair
     end
 
     def username
-      config.ssh_username.call(image(force: true))
+      if config.ssh_username_from == 'volume'
+        config.ssh_username.call(volume)
+      elsif config.ssh_username_from == 'instance'
+        config.ssh_username.call(object)
+      else
+        config.ssh_username.call(image(force: true))
+      end
     end
 
     def key_cmd

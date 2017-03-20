@@ -22,6 +22,7 @@ module Eclair
         end
       end
       @ssh_keys             = {}
+      @ssh_username_from    = "image"
       @ssh_hostname         = :public_ip_address
       @ssh_ports            = [22].freeze
       @ssh_options          = "-o ConnectTimeout=1 -o StrictHostKeyChecking=no".freeze
