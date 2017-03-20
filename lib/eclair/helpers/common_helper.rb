@@ -20,9 +20,5 @@ module Eclair
     def config
       Eclair.config
     end
-
-    def cache
-      Eclair.cache
-    end
   end
 end

@@ -2,11 +2,10 @@ module Eclair
 end
 
 require "curses"
-require "zlib"
 require "aws-sdk"
 require "string_scorer"
 require "pry"
-require "optparse"
+
 require "eclair/helpers/benchmark_helper"
 require "eclair/helpers/common_helper"
 require "eclair/helpers/aws_helper"
@@ -20,4 +19,4 @@ require "eclair/group"
 require "eclair/instance"
 require "eclair/console"
 require "eclair/color"
-require "eclair/cache"
+

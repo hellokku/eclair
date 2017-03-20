@@ -3,38 +3,30 @@ module Eclair
     include CommonHelper
     extend self
 
+    HEADER_ROWS = 4
     SORT_FUNCTIONS = {
       "Name" => lambda {|i| [i.name.downcase, -i.launch_time.to_i]}, 
     }
 
-    HEADER_ROWS = 4
-
-    def header_rows
-      4
-    end
-
     def maxy
-      stdscr.maxy - header_rows
+      stdscr.maxy - HEADER_ROWS
     end
-
-    def update_header str, pos = 0
-      str.split("\n").map(&:strip).each_with_index do |line, i|
-        setpos(i + pos,0)
-        clrtoeol
-        addstr(line)
-      end
-    end
-
     
     def render_header
       if mode == :search
         if cursor
-          update_header("Searching #{@search_str}\nFound #{cursor.name}")
+          header = ["Searching #{@search_str}", "Found #{cursor.name}", ""]
         else
-          update_header("Searching #{@search_str}\nNone Found")
+          header = ["Searching #{@search_str}", "None Found", ""]
         end
       else
-        update_header(cursor.header)
+        header = cursor.header
+      end
+
+      header.each_with_index do |line,i|
+        setpos(i,0)
+        clrtoeol
+        addstr(line)
       end
       render_help
     end
@@ -68,49 +60,25 @@ module Eclair
       render_all
     end
 
-    def reload
-      old_id = cursor.id
-      assign
-      x, y = find_cursor_by_id(old_id)
-      if x && y
-        move_cursor(x: x, y: y)
-      else
-        move_cursor(x: 0, y: 0)
-      end
-      render_all
-    end
-
     def assign
       sort_function = lambda {|i| [i.name.downcase, -i.launch_time.to_i]}
-      @columns = config.columns.times.map{|idx| Column.new(idx)}.to_a
-      @selected = []
-      @x = -1
-      @y = -1
-      group_map = {}
+      @group_map ||= {}
       if config.group_by
         Aws.instances.group_by(&config.group_by).each do |group, instances|
-          group_cell = nil
-          if group_map[group]
-            group_cell  = group_map[group]
+          if @group_map[group]
+            group_cell  = @group_map[group]
           else
             col = columns[target_col]
             group_cell = Group.new(group, col)
             col << group_cell
-            group_map[group] = group_cell
+            @group_map[group] = group_cell
           end
           instances.each do |i|
-            unless group_cell.find{|j| j.respond_to?(:instance_id) && j.instance_id == i.instance_id}
+            unless group_cell.find{|j| j.instance_id == i.instance_id}
               obj = Instance.new(i.instance_id, col)
               group_cell << obj
             end
           end
-          group_cell.items.each do |x|
-            if x.object == nil
-              close_screen
-              binding.pry
-            end
-          end
-
           group_cell.items.sort_by!(&sort_function)
         end
       else
@@ -152,28 +120,26 @@ module Eclair
         cmd = target.ssh_cmd
       else
         cmds = []
-        target_cmd = ""
+        session_name = nil
+        session_cmd = nil
 
         targets.each_with_index do |target, i|
-          if i == 0 
-            if ENV['TMUX'] # Eclair called inside of tmux
-              # Create new session and save window id
-              window_name = `tmux new-window -P -- '#{target.ssh_cmd}'`.strip
-              target_cmd = "-t #{window_name}"
-            else # Eclair called from outside of tmux
-              # Create new session and save session
+          if i==0
+            if ENV['TMUX']
+              cmds << "tmux new-window -- '#{target.ssh_cmd}'"
+            else
               session_name = "eclair#{Time.now.to_i}"
-              target_cmd = "-t #{session_name}"
-              `tmux new-session -d -s #{session_name} -- '#{target.ssh_cmd}'`
+              session_cmd = "-t #{session_name}"
+              cmds << "tmux new-session -d -s #{session_name} -- '#{target.ssh_cmd}'"
             end
-          else # Split layout and 
-            cmds << "split-window #{target_cmd} -- '#{target.ssh_cmd}'"
-            cmds << "select-layout #{target_cmd} tiled"
+          else
+            cmds << "tmux split-window #{session_cmd} -- '#{target.ssh_cmd}'"
+            cmds << "tmux select-layout #{session_cmd} tiled"
           end
         end
-        cmds << "set-window-option #{target_cmd} synchronize-panes on" 
-        cmds << "attach #{target_cmd}" unless ENV['TMUX']
-        cmd = "tmux #{cmds.join(" \\; ")}"
+        cmds << "tmux set-window-option #{session_cmd} synchronize-panes on" 
+        cmds << "tmux attach #{session_cmd}" unless ENV['TMUX']
+        cmd = cmds.join(" && ")
       end
       system cmd
       exit
@@ -184,7 +150,7 @@ module Eclair
     end
 
     def columns
-      @columns
+      @columns ||= config.columns.times.map{|idx| Column.new(idx)}.to_a
     end
 
     def rows
@@ -197,7 +163,7 @@ module Eclair
     end
 
     def selected
-      @selected
+      @selected ||= []
     end
 
     def mode
@@ -207,7 +173,7 @@ module Eclair
     def select
       end_search if mode == :search
       if mode == :navi
-          @mode = :select
+        @mode = :select
         cursor.toggle_select
       end
       cursor.toggle_select
@@ -243,24 +209,14 @@ module Eclair
     end
 
     def cursor
+      @x ||= -1
+      @y ||= -1
       if @x >=0 && @y >= 0
         columns[@x][@y]
       else
         nil
       end
     end
-
-    def find_cursor_by_id id
-      columns.each_with_index do |col, x|
-        col.each_with_index do |v, y|
-          if id == v.id
-            return [x,y]
-          end
-        end
-      end
-      nil
-    end
-
 
     def query
       return nil if @search_str == ""
@@ -288,6 +244,7 @@ module Eclair
       x,y = @rollback_cursor
       move_cursor(x: x, y: y, mode: @rollback_mode)
     end
+
 
     def move_cursor **options, &block
       if cursor
@@ -364,5 +321,35 @@ module Eclair
       trap("INT") { exit }
     end
 
+    def next_sort_function
+      @sort_function_idx ||= -1
+      @sort_function_idx = (@sort_function_idx + 1) % SORT_FUNCTIONS.count
+      SORT_FUNCTIONS.values[@sort_function_idx]
+    end
+
+    def sorted_by
+      SORT_FUNCTIONS.keys[@sort_function_idx]
+    end
+
+    def change_sort
+      stored_cursor = cursor
+      sort_function = next_sort_function
+      columns.each do |column| 
+        column.groups.each do |group|
+          group.items.sort_by!(&sort_function)
+        end
+      end
+      @x, @y = stored_cursor.x, stored_cursor.y
+      render_all
+    end
+
+    def reload
+      clear
+      addstr("reloading")
+      refresh
+      Aws.reload_instances
+      assign
+      render_all
+    end
   end
 end

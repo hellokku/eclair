@@ -1,3 +1,3 @@
 module Eclair
-  VERSION = "2.0.0.beta"
+  VERSION = "1.2.1"
 end

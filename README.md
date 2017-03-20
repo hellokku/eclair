@@ -2,8 +2,6 @@
 
 Simple ssh helper for Amazon EC2
 
-![eclair gif](out.gif)
-
 ## Requirements
     
     tmux
