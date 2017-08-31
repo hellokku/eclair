@@ -115,7 +115,10 @@ module Eclair
     end
 
     def fetch_root_volume root_volume_ids
-      ec2.describe_volumes(volume_ids: root_volume_ids).volumes.flatten
+      begin
+        ec2.describe_volumes(volume_ids: root_volume_ids).volumes.flatten
+      rescue
+      end
     end
 
     def fetch_dns_records
@@ -154,7 +157,10 @@ module Eclair
       image_ids = @instances.map(&:image_id)
 
       root_volume_ids = @instances.collect{|i|
-        i.block_device_mappings.find{|v| v.device_name == i.root_device_name}.ebs.volume_id
+        block_device = i.block_device_mappings.find{|v| v.device_name == i.root_device_name}
+        if block_device != nil 
+            block_device.ebs.volume_id
+        end
       }
 
       if @threads
