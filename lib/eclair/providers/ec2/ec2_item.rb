@@ -29,7 +29,7 @@ module Eclair
     end
 
     def command
-      hosts = [@instance.public_ip_address, @instance.private_ip_address].compact
+      hosts = [@instance.send(config.host)].compact
       ports = config.ssh_ports
       ssh_options = config.ssh_options
       ssh_command = config.ssh_command
@@ -50,7 +50,7 @@ module Eclair
         end
       end.join(" || ")
       # puts joined_cmd
-      "echo Attaching to #{Shellwords.escape(name)} \\[#{@instance.instance_id}\\] && #{joined_cmd}"
+      "echo Attaching to #{Shellwords.escape(name)} \\[#{@instance.public_ip_address}\\] \\[#{@instance.private_ip_address}\\] \\[#{@instance.instance_id}\\] && #{joined_cmd}"
     end
 
     def image
@@ -96,6 +96,11 @@ module Eclair
 
     def security_groups
       @security_groups ||= @instance.security_groups.map{|sg| provider.find_security_group_by_id(sg.group_id)}
+    end
+
+    def tags
+      return @tags if @tags
+      @tags = @instance.tags
     end
 
     def search_key

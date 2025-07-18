@@ -40,6 +40,7 @@ module Eclair
       @exec_format          = "{ssh_command} {ssh_options} -p{port} {ssh_key} {username}@{host}"
       @provider             = :ec2
       @get_pods_option      = ""
+      @host                 = "private_ip_address"
       @use_vpc_id_env       = false
 
       instance_variables.each do |var|
