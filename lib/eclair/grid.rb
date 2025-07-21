@@ -86,33 +86,31 @@ module Eclair
       return if targets.empty?
       Curses.close_screen
 
-      if targets.length == 1
-        cmd = targets.first.command
-      else
-        cmds = []
-        target_cmd = ""
+      cmds = []
+      target_cmd = ""
 
-        targets.each_with_index do |target, i|
-          if i == 0
-            if ENV['TMUX'] # Eclair called inside of tmux
-              # Create new session and save window id
-              window_name = `tmux new-window -P -- '#{target.command}'`.strip
-              target_cmd = "-t #{window_name}"
-            else # Eclair called from outside of tmux
-              # Create new session and save session
-              session_name = "eclair#{Time.now.to_i}"
-              target_cmd = "-t #{session_name}"
-              `tmux new-session -d -s #{session_name} -- '#{target.command}'`
-            end
-          else # Split layout and
-            cmds << "split-window #{target_cmd} -- '#{target.command}'"
-            cmds << "select-layout #{target_cmd} tiled"
+      targets.each_with_index do |target, i|
+        Eclair.logger.debug("target command: #{target.command}")
+        if i == 0
+          if ENV['TMUX'] # Eclair called inside of tmux
+            # Create new session and save window id
+            window_name = `tmux new-window -P -- '#{target.command}'`.strip
+            target_cmd = "-t #{window_name}"
+          else # Eclair called from outside of tmux
+            # Create new session and save session
+            session_name = "eclair#{Time.now.to_i}"
+            target_cmd = "-t #{session_name}"
+            `tmux new-session -d -s #{session_name} -- '#{target.command}'`
           end
+        else # Split layout and
+          cmds << "split-window #{target_cmd} -- '#{target.command}'"
+          cmds << "select-layout #{target_cmd} tiled"
         end
-        cmds << "set-window-option #{target_cmd} synchronize-panes on"
-        cmds << "attach #{target_cmd}" unless ENV['TMUX']
-        cmd = "tmux #{cmds.join(" \\; ")}"
       end
+      cmds << "set-window-option #{target_cmd} synchronize-panes on"
+      cmds << "attach #{target_cmd}" unless ENV['TMUX']
+      cmd = "tmux #{cmds.join(" \\; ")}"
+
       system(cmd)
       exit()
       resize

@@ -100,6 +100,36 @@ end
 ## Alternative configuration.
 ##
 ## You can easily switch between multiple configurations with 'ECL_PROFILE'
+## environment variable. To use 'aws ssm' configuration, execute eclair like below:
+##
+##     ECL_PROFILE=ssm ecl
+Eclair.configure "ssm" do |config|
+#  group by ec2 tags
+#  config.group_by = lambda do |instance|
+#    tag_name= instance.tags.find { |tag| tag.key == 'Name' }
+#    tag_app = instance.tags.find { |tag| tag.key == 'app' }
+#    tag_eks = instance.tags.find { |tag| tag.key == 'aws:eks:cluster-name' }
+#    tag_service = instance.tags.find { |tag| tag.key == 'service' }
+#    return "Noname" unless tag_name
+#    if tag_app
+#       tag_app.value
+#    elsif tag_eks
+#      tag_eks.value
+#    else
+#      "no_group"
+#    end
+#  end
+
+  # AWS SSM
+  config.host = "instance_id"
+  config.ssh_command = "/usr/local/bin/aws"
+  config.ssh_options = "ssm start-session --target "
+  config.exec_format = "{ssh_command} {ssh_options} {host}"
+end
+
+## Alternative configuration.
+##
+## You can easily switch between multiple configurations with 'ECL_PROFILE'
 ## environment variable. To use 'k8s' configuration, execute eclair like below:
 ##
 ##     ECL_PROFILE=k8s ecl

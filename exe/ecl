@@ -17,7 +17,7 @@ trap("INT") { exit }
 
 # logger
 Eclair.logger.level = Logger.const_get(Eclair.config.loglevel.to_s.upcase) rescue Logger::INFO
-Eclair.logger.info("Eclair logger is initialized.")
+STDOUT.puts "Eclair is initialized."
 
 
 if ARGV.empty?
