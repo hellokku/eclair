@@ -42,6 +42,7 @@ module Eclair
       @get_pods_option      = ""
       @host                 = "private_ip_address"
       @use_vpc_id_env       = false
+      @loglevel             = "info"
 
       instance_variables.each do |var|
         Config.class_eval do
