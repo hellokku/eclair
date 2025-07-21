@@ -1,0 +1,56 @@
+# .github/workflows/release.yml
+
+name: Gem Release
+
+# 이 워크플로우는 'v'로 시작하는 태그가 푸시될 때 실행됩니다 (예: v1.0, v1.2.3).
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    name: Build and Release Gem
+    runs-on: ubuntu-latest
+    # GitHub Actions에서 제공하는 기본 권한 외에,
+    # 릴리스를 생성하고 콘텐츠를 쓸 수 있는 권한을 명시적으로 부여합니다.
+    permissions:
+      contents: write
+
+    steps:
+      # 1. Git 저장소의 코드를 워크플로우 환경으로 가져옵니다.
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Ruby 환경을 설정합니다.
+      # 프로젝트에 맞는 Ruby 버전을 'ruby-version'에 명시하세요.
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.1' # 예: '3.1', '3.0', '2.7'
+          bundler-cache: true # 'bundle install'을 실행하고 결과를 캐시하여 속도를 높입니다.
+
+      # 3. 빌드에 필요한 시스템 의존성을 설치합니다.
+      # Debian/Ubuntu 기반의 실행 환경이므로 apt-get을 사용합니다.
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libncursesw5-dev
+
+      # 4. .gemspec 파일을 사용하여 Gem을 빌드합니다.
+      # 이 명령이 성공하면 현재 디렉터리에 *.gem 파일이 생성됩니다.
+      - name: Build gem
+        run: gem build *.gemspec
+
+      # 5. GitHub Release를 생성하고 빌드된 Gem 파일을 업로드합니다.
+      # softprops/action-gh-release 액션은 이 과정을 자동화해주는 매우 인기있는 도구입니다.
+      # 푸시된 태그 이름을 기반으로 릴리스를 생성합니다.
+      - name: Create GitHub Release and Upload Gem
+        uses: softprops/action-gh-release@v2
+        with:
+          # 'files' 속성에 패턴을 지정하면 일치하는 파일을 찾아 릴리스 에셋으로 업로드합니다.
+          files: "*.gem"
+        env:
+          # GITHUB_TOKEN은 GitHub Actions에서 자동으로 생성해주는 비밀 토큰입니다.
+          # 별도로 설정할 필요가 없습니다.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
