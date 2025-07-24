@@ -20,7 +20,7 @@ First execution will create `~/.ecl/config.rb` file. Edit this file and run agai
 
 &nbsp;
 
-Configurations
+Configurations - AWS
 --------
 ### aws_region
 AWS region to connect.
@@ -32,21 +32,6 @@ config.aws_region = "ap-northeast-1"
 Max number of columns displayed in eclair.
 ```ruby
 config.columns = 4
-```
-
-### ssh_username
-Function to find username from image. Returns username of given image. Uses
-image data from [EC2::Client#describe_images] API call.
-
-```ruby
-config.ssh_username = lambda do |image|
-  case image.name
-  when /ubuntu/
-    "ubuntu"
-  else
-    "ec2-user"
-  end
-end
 ```
 
 ### group_by
@@ -76,9 +61,43 @@ config.group_by = lambda do |instance|
 end
 ```
 
+Grouping by tags is also possible;
+```
+  config.group_by = lambda do |instance|
+    tag_name= instance.tags.find { |tag| tag.key == 'Name' }
+    tag_app = instance.tags.find { |tag| tag.key == 'app' }
+    tag_eks = instance.tags.find { |tag| tag.key == 'aws:eks:cluster-name' }
+    tag_service = instance.tags.find { |tag| tag.key == 'service' }
+    return "Noname" unless tag_name
+    if tag_app
+       tag_app.value 
+    elsif tag_eks
+      tag_eks.value
+    else
+      "no_group"
+    end
+```
+
 You can disable grouping by assigning nil:
 ```ruby
 config.group_by = nil
+```
+
+## Configuration - SSH
+---
+### ssh_username
+Function to find username from image. Returns username of given image. Uses
+image data from [EC2::Client#describe_images] API call.
+
+```ruby
+config.ssh_username = lambda do |image|
+  case image.name
+  when /ubuntu/
+    "ubuntu"
+  else
+    "ec2-user"
+  end
+end
 ```
 
 ### ssh_ports
@@ -109,6 +128,19 @@ config.ssh_keys = {
   "keypair2" => "/path/to/key2",
 }
 ```
+
+## Configuration - AWS SSM
+```ruby
+##     ECL_PROFILE=ssm ecl
+Eclair.configure "ssm" do |config|
+  ...
+  config.host = "instance_id"
+  config.ssh_command = "/usr/local/bin/aws"
+  config.ssh_options = "ssm start-session --target "
+  config.exec_format = "{ssh_command} {ssh_options} {host}"
+end
+```
+
 
 ### use_vpc_id_env (Experimental)
 _This Feature is experimental and subject to change in future versions_ 
