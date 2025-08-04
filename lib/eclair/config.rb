@@ -44,6 +44,12 @@ module Eclair
       @use_vpc_id_env       = false
       @loglevel             = "info"
 
+      # fallback connection settings
+      @fallback_host        = ""
+      @fallback_ssh_command = ""
+      @fallback_ssh_options = ""
+      @fallback_exec_format = "echo 'You need to configure a fallback connection'"
+
       instance_variables.each do |var|
         Config.class_eval do
           attr_accessor var.to_s.tr("@","").to_sym

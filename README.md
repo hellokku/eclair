@@ -129,7 +129,24 @@ config.ssh_keys = {
 }
 ```
 
+
+## fallback connection
+If an SSH (IP) connection cannot be established, a fallback connection is initiated through AWS SSM.
+```ruby
+## Default configuration.
+Eclair.configure do |config|
+  ...
+  # fallback via AWS SSM
+  config.fallback_host = "instance_id"
+  config.fallback_ssh_command = "/usr/local/bin/aws"
+  config.fallback_ssh_options = "ssm start-session --target "
+  config.fallback_exec_format = "{ssh_command} {ssh_options} {host}"
+  ...
+end
+```
+
 ## Configuration - AWS SSM
+This setting uses ECL_PROFILE to distinguish between and connect via a standard SSH method or AWS SSM. 
 ```ruby
 ##     ECL_PROFILE=ssm ecl
 Eclair.configure "ssm" do |config|

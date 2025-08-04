@@ -37,6 +37,16 @@ module Eclair
       key_cmd = config.ssh_keys[@instance.key_name] ? "-i #{config.ssh_keys[@instance.key_name]}" : ""
       format = config.exec_format
 
+      if config.fallback_host.nil? || config.fallback_host.empty?
+        fallback_hosts = []
+      else
+        fallback_hosts = [@instance.send(config.fallback_host)].compact
+      end
+
+      fallback_ssh_options = config.fallback_ssh_options
+      fallback_ssh_command = config.fallback_ssh_command
+      fallback_format = config.fallback_exec_format
+
       joined_cmd = hosts.map do |host|
         ports.map do |port|
           {
@@ -49,8 +59,18 @@ module Eclair
           }.reduce(format) { |cmd,pair| cmd.sub(pair[0],pair[1].to_s) }
         end
       end.join(" || ")
+
+      joined_fallback_cmd = fallback_hosts.map do |host|
+        {
+          "{ssh_command}" => fallback_ssh_command,
+          "{ssh_options}" => fallback_ssh_options,
+          "{host}"        => host,
+        }.reduce(fallback_format) { |cmd,pair| cmd.sub(pair[0],pair[1].to_s) }
+      end.join(" || ")
+
       # puts joined_cmd
-      "echo Attaching to #{Shellwords.escape(name)} \\[#{@instance.public_ip_address}\\] \\[#{@instance.private_ip_address}\\] \\[#{@instance.instance_id}\\] && #{joined_cmd}"
+      # 실제 tmux new-session command, 실패시 fallback command 실행
+      "echo Attaching to #{Shellwords.escape(name)} \\[#{@instance.public_ip_address}\\] \\[#{@instance.private_ip_address}\\] \\[#{@instance.instance_id}\\] && #{joined_cmd} 2>/dev/null|| #{joined_fallback_cmd}"
     end
 
     def image
